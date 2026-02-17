@@ -1,0 +1,29 @@
+# Database and uploads
+backend/equiguard.db
+backend/uploads/
+
+# Python
+backend/.venv/
+frontend/.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.uv/
+
+# Node
+web/node_modules/
+web/dist/
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE and OS
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Logs
+*.log
