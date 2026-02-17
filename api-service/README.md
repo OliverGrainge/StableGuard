@@ -7,32 +7,12 @@ Requires [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/inst
 ## Run
 
 ```bash
-cd backend
+cd api-service
 uv sync
 uv run uvicorn app.main:app --reload
 ```
 
 API base URL: `http://127.0.0.1:8000`
-
-## Streamlit dashboard
-
-Run API (terminal 1):
-
-```bash
-cd backend
-uv sync
-uv run uvicorn app.main:app --reload
-```
-
-Run dashboard (terminal 2):
-
-```bash
-cd frontend
-uv sync
-uv run streamlit run app.py
-```
-
-Dashboard URL (default): `http://localhost:8501`
 
 ## Environment variables
 
@@ -70,9 +50,9 @@ Dashboard URL (default): `http://localhost:8501`
 ## Database and persistence
 
 - Yes, there is a database.
-- By default it is SQLite at `backend/equiguard.db` (`DATABASE_URL=sqlite:///./equiguard.db`).
+- By default it is SQLite at `api-service/equiguard.db` (`DATABASE_URL=sqlite:///./equiguard.db`).
 - On server startup, SQLAlchemy runs `create_all`, so missing tables are created automatically.
-- Uploaded files are separate from DB rows and go to `backend/uploads` by default (`UPLOADS_DIR=./uploads`):
+- Uploaded files are separate from DB rows and go to `api-service/uploads` by default (`UPLOADS_DIR=./uploads`):
   - Horse images: `uploads/horses`
   - Detection images: `uploads/detections`
 
@@ -83,14 +63,14 @@ Stop the server before resetting.
 Reset only database rows (keep uploaded images):
 
 ```bash
-cd backend
+cd api-service
 rm -f equiguard.db
 ```
 
 Reset database rows and uploaded files:
 
 ```bash
-cd backend
+cd api-service
 rm -f equiguard.db
 rm -rf uploads
 ```

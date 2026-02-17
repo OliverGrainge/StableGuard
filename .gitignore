@@ -1,18 +1,18 @@
 # Database and uploads
-backend/equiguard.db
-backend/uploads/
+api-service/equiguard.db
+api-service/uploads/
 
 # Python
-backend/.venv/
-frontend/.venv/
+api-service/.venv/
+web-service/.venv/
 **/__pycache__/
 *.pyc
 .pytest_cache/
 .uv/
 
 # Node
-web/node_modules/
-web/dist/
+web-service/node_modules/
+web-service/dist/
 
 # Environment
 .env

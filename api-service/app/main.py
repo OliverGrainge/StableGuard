@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -5,12 +6,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, run_migrations
 from app.routes import detections, horses, locations
+
+# Ensure uploads dir exists before StaticFiles is instantiated at import time
+Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    run_migrations(engine)
+    yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title=settings.app_name)
+    app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -27,11 +38,6 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def healthcheck():
         return {"status": "ok"}
-
-    @app.on_event("startup")
-    def on_startup():
-        Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)
-        Base.metadata.create_all(bind=engine)
 
     app.mount("/uploads", StaticFiles(directory=settings.uploads_dir), name="uploads")
 

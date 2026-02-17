@@ -30,7 +30,7 @@ The backend does not keep images inside the DB file. It stores image files on di
 ## 3. Quick Start
 
 ```bash
-cd backend
+cd api-service
 uv sync
 uv run uvicorn app.main:app --reload
 ```
@@ -40,19 +40,6 @@ Server URL:
 
 Swagger docs:
 - `http://127.0.0.1:8000/docs`
-
-Streamlit dashboard:
-
-```bash
-cd frontend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-Dashboard URL:
-- `http://localhost:8501`
 
 Health check:
 
@@ -148,7 +135,6 @@ Example response:
   "description": "Bay gelding with white blaze",
   "id": 1,
   "reference_image_path": "/abs/path/to/uploads/horses/....jpg",
-  "visual_embedding": "...",
   "created_at": "2026-02-16T12:00:00.000000Z"
 }
 ```
@@ -234,7 +220,7 @@ Default upload paths:
 
 ## 8. How To Reset Data
 
-Stop the server first, then run from `backend/`.
+Stop the server first, then run from `api-service/`.
 
 Reset only DB rows (keep uploaded images):
 

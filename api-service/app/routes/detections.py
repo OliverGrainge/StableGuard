@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,12 +11,10 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import settings
 from app.database import get_db
-from app.embedding_service import deserialize_embedding, generate_embedding, match_horses
-from app.horse_identifier import identify_from_scores
-from app.vlm_service import VLMService
+from app.horse_identifier import match_horses
+from app.ml_client import ml_client
 
 router = APIRouter(prefix="/detections", tags=["detections"])
-vlm_service = VLMService()
 
 
 def _save_upload(upload: UploadFile, subdir: str) -> tuple[str, str]:
@@ -50,6 +50,8 @@ def _detection_to_read(d: models.Detection) -> schemas.DetectionRead:
         raw_vlm_response=d.raw_vlm_response,
         created_at=d.created_at,
         horse_scores=_parse_horse_scores(d),
+        vlm_model_id=d.vlm_model_id,
+        embed_model_id=d.embed_model_id,
     )
 
 
@@ -65,60 +67,87 @@ def analyze_detection(
 
     abs_path, rel_path = _save_upload(image, "detections")
 
-    # Step 1: Action classification (VLM)
-    analysis = vlm_service.analyze_scene(abs_path)
+    # Step 1: Action recognition via ML service
+    action_result = ml_client.analyze_action(abs_path)
 
-    # Step 2: Horse identification (CLIP embeddings)
+    # Step 2: Generate embedding for the detection image
+    emb_result = ml_client.generate_embedding(abs_path)
+
+    # Step 3: Cosine similarity against all registered horse embeddings
     horses = db.query(models.Horse).all()
-    query_embedding = generate_embedding(abs_path)
-    horses_with_embeddings = [
-        {"name": h.name, "embedding": deserialize_embedding(h.visual_embedding)}
-        for h in horses
-    ]
-    horse_scores = match_horses(query_embedding, horses_with_embeddings)
+    best_horse_id, best_similarity, all_scores = match_horses(emb_result.embedding, horses)
 
-    horse_id, best_prob, all_scores = identify_from_scores(horse_scores, horses)
-    combined_confidence = round((analysis.confidence + best_prob) / 2.0, 3) if horse_id else analysis.confidence
+    # Only accept the match if similarity clears the threshold
+    if best_similarity < settings.confidence_threshold:
+        best_horse_id = None
+
+    # Combined confidence: average of action confidence and similarity score
+    if best_horse_id is not None:
+        combined_confidence = round((action_result.confidence + best_similarity) / 2.0, 3)
+    else:
+        combined_confidence = round(action_result.confidence, 3)
+
     kept = combined_confidence >= settings.confidence_threshold
 
     horse_scores_json = json.dumps(all_scores) if all_scores else None
+    raw_inference = json.dumps({
+        "action": {
+            "action": action_result.action,
+            "confidence": action_result.confidence,
+            "description": action_result.description,
+            "model_id": action_result.model_id,
+        },
+        "embedding": {
+            "dim": emb_result.dim,
+            "model_id": emb_result.model_id,
+            "best_similarity": round(best_similarity, 4),
+        },
+    })
 
     detection = models.Detection(
-        horse_id=horse_id,
+        horse_id=best_horse_id,
         location_id=location_id,
         image_path=rel_path,
         timestamp=datetime.now(timezone.utc),
-        action=analysis.action,
+        action=action_result.action,
         confidence=combined_confidence,
-        raw_vlm_response=analysis.raw_response,
+        raw_vlm_response=raw_inference,
         horse_scores_json=horse_scores_json,
+        vlm_model_id=action_result.model_id,
+        embed_model_id=emb_result.model_id,
     )
     db.add(detection)
     db.commit()
     db.refresh(detection)
 
-    horse_name = None
-    if horse_id:
-        horse = db.query(models.Horse).filter(models.Horse.id == horse_id).first()
-        horse_name = horse.name if horse else None
+    horse_name: str | None = None
+    if best_horse_id is not None:
+        matched = next((h for h in horses if h.id == best_horse_id), None)
+        horse_name = matched.name if matched else None
 
     response_scores = [
-        schemas.HorseScore(horse_id=s["horse_id"], horse_name=s["horse_name"], probability=s["probability"])
+        schemas.HorseScore(
+            horse_id=s["horse_id"],
+            horse_name=s["horse_name"],
+            probability=s["probability"],
+        )
         for s in all_scores
     ]
 
     return schemas.AnalyzeResponse(
         detection_id=detection.id,
-        horse_id=horse_id,
+        horse_id=best_horse_id,
         horse_name=horse_name,
         location_id=location_id,
-        action=analysis.action,
+        action=action_result.action,
         confidence=combined_confidence,
         kept=kept,
         timestamp=detection.timestamp,
         image_path=detection.image_path,
-        raw_vlm_response=detection.raw_vlm_response,
+        raw_vlm_response=raw_inference,
         horse_scores=response_scores,
+        vlm_model_id=action_result.model_id,
+        embed_model_id=emb_result.model_id,
     )
 
 
@@ -141,7 +170,10 @@ def list_detections(
             raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD") from exc
         day_start = parsed.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
-        query = query.filter(models.Detection.timestamp >= day_start, models.Detection.timestamp <= day_end)
+        query = query.filter(
+            models.Detection.timestamp >= day_start,
+            models.Detection.timestamp <= day_end,
+        )
 
     rows = query.order_by(models.Detection.timestamp.desc()).limit(200).all()
     return [_detection_to_read(d) for d in rows]

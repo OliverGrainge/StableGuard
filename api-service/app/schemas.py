@@ -50,6 +50,8 @@ class DetectionRead(DetectionBase):
     id: int
     created_at: datetime
     horse_scores: list[HorseScore] | None = None
+    vlm_model_id: str | None = None
+    embed_model_id: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,6 +68,8 @@ class AnalyzeResponse(BaseModel):
     image_path: str
     raw_vlm_response: str | None = None
     horse_scores: list[HorseScore] = []
+    vlm_model_id: str | None = None
+    embed_model_id: str | None = None
 
 
 class HorseDetail(BaseModel):

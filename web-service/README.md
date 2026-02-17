@@ -8,7 +8,7 @@ React frontend for StableGuard — manage horses, locations, and analyze images 
 - **Backend running** — the web app proxies `/api`, `/uploads`, and `/health` to `http://localhost:8000`. Start the backend first:
 
   ```bash
-  cd ../backend
+  cd ../api-service
   uv sync
   uv run uvicorn app.main:app --reload
   ```
@@ -21,6 +21,16 @@ npm install
 
 # Start the dev server (http://localhost:5173)
 npm run dev
+```
+
+## Optional Python Environment (uv)
+
+```bash
+# Create/refresh the project virtual environment from pyproject.toml
+uv sync
+
+# Or sync directly from requirements.txt
+uv pip sync requirements.txt --python .venv/bin/python --allow-empty-requirements
 ```
 
 ## Scripts

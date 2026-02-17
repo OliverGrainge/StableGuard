@@ -17,7 +17,7 @@ class Horse(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     reference_image_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    visual_embedding: Mapped[str | None] = mapped_column(Text, nullable=True)
+    embedding: Mapped[str | None] = mapped_column(Text, nullable=True)   # JSON-encoded float list
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     detections: Mapped[list["Detection"]] = relationship(back_populates="horse")
@@ -45,8 +45,9 @@ class Detection(Base):
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     raw_vlm_response: Mapped[str | None] = mapped_column(Text, nullable=True)
     horse_scores_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vlm_model_id: Mapped[str | None] = mapped_column(String(255), nullable=True)   # MLOps: which VLM produced this
+    embed_model_id: Mapped[str | None] = mapped_column(String(255), nullable=True) # MLOps: which embedder produced this
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     horse: Mapped[Horse | None] = relationship(back_populates="detections")
     location: Mapped[Location] = relationship(back_populates="detections")
-
