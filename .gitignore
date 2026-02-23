@@ -9,6 +9,7 @@ web-service/.venv/
 *.pyc
 .pytest_cache/
 .uv/
+.venv/
 
 # Node
 web-service/node_modules/
@@ -27,3 +28,11 @@ web-service/dist/
 
 # Logs
 *.log
+
+# StableGuard runtime data (large, generated)
+data/frames/
+data/clips/
+data/training/
+
+# Trained model weights
+models/*.pt
